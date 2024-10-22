@@ -35,7 +35,7 @@ jobs:
       id: extract_file
       run: |
         FILE_CONTENT=$(cat ${{ github.event.inputs.file_path }})
-        echo "::set-output name=file_content::${FILE_CONTENT}"
+        echo "file_content=${FILE_CONTENT}" >> $GITHUB_ENV
 
     - name: Generate unit tests using OpenAI
       id: generate_tests
@@ -45,23 +45,23 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{
             "model": "text-davinci-003",
-            "prompt": "Generate TypeScript unit tests for the following file:\n${{ steps.extract_file.outputs.file_content }}",
+            "prompt": "Generate TypeScript unit tests for the following file:\n${{ env.file_content }}",
             "max_tokens": 1500
           }')
         GENERATED_TESTS=$(echo $RESPONSE | jq -r '.choices[0].text')
-        echo "::set-output name=generated_tests::${GENERATED_TESTS}"
+        echo "generated_tests=${GENERATED_TESTS}" >> $GITHUB_ENV
 
     - name: Create test file
       run: |
-        GENERATED_FILE="tests/$(basename ${{ github.event.inputs.file_path }} .ts).test.ts"
-        echo "${{ steps.generate_tests.outputs.generated_tests }}" > $GENERATED_FILE
+        GENERATED_FILE="__tests__/$(basename ${{ github.event.inputs.file_path }} .ts).test.ts"
+        echo "${{ env.generated_tests }}" > $GENERATED_FILE
 
     - name: Commit and push changes
       run: |
         git config user.name "github-actions"
         git config user.email "actions@github.com"
         git checkout -b add-generated-tests
-        git add tests/
+        git add __tests__/
         git commit -m "${{ github.event.inputs.commit_message }}"
         git push origin add-generated-tests
 
@@ -73,4 +73,3 @@ jobs:
         branch: add-generated-tests
         title: Add generated unit tests
         body: Generated unit tests for ${{ github.event.inputs.file_path }} using OpenAI API.
-
