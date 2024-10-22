@@ -72,7 +72,8 @@ jobs:
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: ${{ github.event.inputs.commit_message }}
+        base: main
         branch: ${{ env.BRANCH_NAME }}
+        commit-message: ${{ github.event.inputs.commit_message }}
         title: Add generated unit tests
         body: Generated unit tests for ${{ github.event.inputs.file_path }} using OpenAI API.
