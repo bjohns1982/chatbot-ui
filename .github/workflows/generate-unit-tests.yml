@@ -1,0 +1,76 @@
+name: Generate Unit Tests with OpenAI
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: 'Path to the TypeScript file for which to generate unit tests'
+        required: true
+      commit_message:
+        description: 'Commit message for the generated tests'
+        required: false
+        default: 'Generated unit tests using OpenAI API'
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  generate_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Extract file content
+      id: extract_file
+      run: |
+        FILE_CONTENT=$(cat ${{ github.event.inputs.file_path }})
+        echo "::set-output name=file_content::${FILE_CONTENT}"
+
+    - name: Generate unit tests using OpenAI
+      id: generate_tests
+      run: |
+        RESPONSE=$(curl -s https://api.openai.com/v1/completions \
+          -H "Authorization: Bearer $OPENAI_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "model": "text-davinci-003",
+            "prompt": "Generate TypeScript unit tests for the following file:\n${{ steps.extract_file.outputs.file_content }}",
+            "max_tokens": 1500
+          }')
+        GENERATED_TESTS=$(echo $RESPONSE | jq -r '.choices[0].text')
+        echo "::set-output name=generated_tests::${GENERATED_TESTS}"
+
+    - name: Create test file
+      run: |
+        GENERATED_FILE="tests/$(basename ${{ github.event.inputs.file_path }} .ts).test.ts"
+        echo "${{ steps.generate_tests.outputs.generated_tests }}" > $GENERATED_FILE
+
+    - name: Commit and push changes
+      run: |
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git checkout -b add-generated-tests
+        git add tests/
+        git commit -m "${{ github.event.inputs.commit_message }}"
+        git push origin add-generated-tests
+
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: ${{ github.event.inputs.commit_message }}
+        branch: add-generated-tests
+        title: Add generated unit tests
+        body: Generated unit tests for ${{ github.event.inputs.file_path }} using OpenAI API.
+
