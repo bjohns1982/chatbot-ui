@@ -57,10 +57,12 @@ jobs:
         mv generated_tests.txt $GENERATED_FILE
 
     - name: Commit and push changes
+      id: commit_and_push
       run: |
         git config user.name "github-actions"
         git config user.email "actions@github.com"
         BRANCH_NAME="add-generated-tests-$(date +%s)"
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
         git checkout -b $BRANCH_NAME
         git add __tests__/
         git commit -m "${{ github.event.inputs.commit_message }}"
@@ -71,6 +73,6 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: ${{ github.event.inputs.commit_message }}
-        branch: ${{ steps.commit_and_push.outputs.branch_name }}
+        branch: ${{ env.BRANCH_NAME }}
         title: Add generated unit tests
         body: Generated unit tests for ${{ github.event.inputs.file_path }} using OpenAI API.
