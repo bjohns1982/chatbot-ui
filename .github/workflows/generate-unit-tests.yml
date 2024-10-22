@@ -60,16 +60,17 @@ jobs:
       run: |
         git config user.name "github-actions"
         git config user.email "actions@github.com"
-        git checkout -b add-generated-tests
+        BRANCH_NAME="add-generated-tests-$(date +%s)"
+        git checkout -b $BRANCH_NAME
         git add __tests__/
         git commit -m "${{ github.event.inputs.commit_message }}"
-        git push origin add-generated-tests
+        git push origin $BRANCH_NAME
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: ${{ github.event.inputs.commit_message }}
-        branch: add-generated-tests
+        branch: ${{ steps.commit_and_push.outputs.branch_name }}
         title: Add generated unit tests
         body: Generated unit tests for ${{ github.event.inputs.file_path }} using OpenAI API.
